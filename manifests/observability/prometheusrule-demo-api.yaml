@@ -1,0 +1,25 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: demo-api
+  namespace: monitoring
+  labels:
+    app: demo-api
+spec:
+  groups:
+    - name: demo-api.rules
+      rules:
+        - alert: DemoApiHighErrorRate
+          expr: >
+            sum(rate(demo_api_errors_total[2m]))
+            /
+            sum(rate(demo_api_requests_total[2m]))
+            > 0.1
+          for: 1m
+          labels:
+            severity: critical
+            service: demo-api
+            namespace: demo
+          annotations:
+            summary: "demo-api error rate above 10%"
+            description: "demo-api is failing {{ $value | humanizePercentage }} of requests over the last 2 minutes."
