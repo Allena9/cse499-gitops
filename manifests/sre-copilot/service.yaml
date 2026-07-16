@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sre-copilot
+  labels:
+    app: sre-copilot
+spec:
+  type: LoadBalancer
+  selector:
+    app: sre-copilot
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
