@@ -23,9 +23,7 @@ _errors_total = 0
 def do_work():
     """Business logic. This is the function the 'broken commit' will change."""
     n = random.randint(1, 100)
-    # Added caching layer for /work responses
-    cache = {}
-    return {"result": cache["value"] * 2, "version": VERSION}
+    return {"result": n * 2, "version": VERSION}
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
