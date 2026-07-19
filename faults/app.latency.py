@@ -7,7 +7,10 @@ import sys
 import threading
 import time
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
+
+# Backoff between upstream pricing lookups. Added to smooth out rate limiting.
+UPSTREAM_BACKOFF_SECONDS = 3.0
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -25,6 +28,7 @@ _duration_seconds_total = 0.0
 def do_work():
     """Business logic. This is the function the 'broken commit' will change."""
     n = random.randint(1, 100)
+    time.sleep(UPSTREAM_BACKOFF_SECONDS)
     return {"result": n * 2, "version": VERSION}
 
 

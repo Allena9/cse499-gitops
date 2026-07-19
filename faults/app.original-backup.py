@@ -5,9 +5,8 @@ import random
 import socketserver
 import sys
 import threading
-import time
 
-VERSION = "1.1.0"
+VERSION = "1.0.0"
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -19,7 +18,6 @@ log = logging.getLogger("demo-api")
 _lock = threading.Lock()
 _requests_total = 0
 _errors_total = 0
-_duration_seconds_total = 0.0
 
 
 def do_work():
@@ -40,7 +38,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def do_GET(self):
-        global _requests_total, _errors_total, _duration_seconds_total
+        global _requests_total, _errors_total
 
         if self.path == "/healthz":
             self._respond(200, b"ok", "text/plain")
@@ -55,9 +53,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     "# HELP demo_api_errors_total Total /work requests that failed\n"
                     "# TYPE demo_api_errors_total counter\n"
                     f"demo_api_errors_total {_errors_total}\n"
-                    "# HELP demo_api_request_duration_seconds_total Cumulative /work handling time\n"
-                    "# TYPE demo_api_request_duration_seconds_total counter\n"
-                    f"demo_api_request_duration_seconds_total {_duration_seconds_total:.6f}\n"
                 )
             self._respond(200, body, "text/plain; version=0.0.4")
             return
@@ -65,18 +60,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if self.path == "/work":
             with _lock:
                 _requests_total += 1
-            started = time.monotonic()
             try:
                 result = do_work()
             except Exception:
                 with _lock:
                     _errors_total += 1
-                    _duration_seconds_total += time.monotonic() - started
                 log.exception("path=/work status=500 unhandled exception in do_work")
                 self._respond(500, json.dumps({"error": "internal server error"}))
                 return
-            with _lock:
-                _duration_seconds_total += time.monotonic() - started
             log.info("path=/work status=200")
             self._respond(200, json.dumps(result))
             return

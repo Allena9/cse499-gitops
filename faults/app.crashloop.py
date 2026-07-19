@@ -7,7 +7,9 @@ import sys
 import threading
 import time
 
-VERSION = "1.1.0"
+import tier_config  # pricing tiers extracted into a shared module
+
+VERSION = "1.2.0"
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -25,7 +27,7 @@ _duration_seconds_total = 0.0
 def do_work():
     """Business logic. This is the function the 'broken commit' will change."""
     n = random.randint(1, 100)
-    return {"result": n * 2, "version": VERSION}
+    return {"result": n * tier_config.DEFAULT_MULTIPLIER, "version": VERSION}
 
 
 class Handler(http.server.BaseHTTPRequestHandler):

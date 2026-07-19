@@ -7,7 +7,13 @@ import sys
 import threading
 import time
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
+
+# Pricing tiers. Multiplier applied to the computed result.
+TIER_MULTIPLIERS = {
+    "standard": 2,
+    "premium": 3,
+}
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -25,7 +31,8 @@ _duration_seconds_total = 0.0
 def do_work():
     """Business logic. This is the function the 'broken commit' will change."""
     n = random.randint(1, 100)
-    return {"result": n * 2, "version": VERSION}
+    tier = random.choice(["standard", "premium", "enterprise"])
+    return {"result": n * TIER_MULTIPLIERS[tier], "tier": tier, "version": VERSION}
 
 
 class Handler(http.server.BaseHTTPRequestHandler):

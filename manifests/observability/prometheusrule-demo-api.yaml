@@ -9,6 +9,7 @@ spec:
   groups:
     - name: demo-api.rules
       rules:
+        # --- scenario: broken-commit -------------------------------------
         - alert: DemoApiHighErrorRate
           expr: >
             sum(rate(demo_api_errors_total[2m]))
@@ -23,3 +24,36 @@ spec:
           annotations:
             summary: "demo-api error rate above 10%"
             description: "demo-api is failing {{ $value | humanizePercentage }} of requests over the last 2 minutes."
+
+        # --- scenario: crashloop -----------------------------------------
+        # kube-prometheus-stack ships KubePodCrashLooping with for: 15m, which
+        # is far too slow to demo. This is the same signal on a demo timescale.
+        - alert: DemoApiCrashLooping
+          expr: >
+            increase(kube_pod_container_status_restarts_total{namespace="demo", container="demo-api"}[5m])
+            > 2
+          for: 30s
+          labels:
+            severity: critical
+            service: demo-api
+            namespace: demo
+          annotations:
+            summary: "demo-api pods are crash looping"
+            description: "demo-api container has restarted {{ $value | printf \"%.0f\" }} times in the last 5 minutes."
+
+        # --- scenario: latency -------------------------------------------
+        # Mean handling time, derived from the cumulative duration counter.
+        - alert: DemoApiHighLatency
+          expr: >
+            sum(rate(demo_api_request_duration_seconds_total[2m]))
+            /
+            sum(rate(demo_api_requests_total[2m]))
+            > 1
+          for: 1m
+          labels:
+            severity: warning
+            service: demo-api
+            namespace: demo
+          annotations:
+            summary: "demo-api mean latency above 1s"
+            description: "demo-api mean /work handling time is {{ $value | printf \"%.2f\" }}s over the last 2 minutes."
