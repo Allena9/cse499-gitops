@@ -114,7 +114,7 @@ am_firing() {
 am_active_names() {
   curl -sf "http://127.0.0.1:${LOCAL_AM_PORT}/api/v2/alerts?active=true" 2>/dev/null \
     | grep -o '"alertname":"[^"]*"' | cut -d'"' -f4 \
-    | grep -Ev '^(Watchdog|InfoInhibitor)$' | sort -u
+    | grep -Ev '^(Watchdog|InfoInhibitor)$' | sort -u || true
 }
 
 argocd_refresh() {
@@ -240,7 +240,7 @@ cmd_heal() {
   if am_port_forward; then
     local deadline=$(( $(date +%s) + ALERT_TIMEOUT ))
     while (( $(date +%s) < deadline )); do
-      [[ -z "$(am_active_names)" ]] && { mark "all alerts resolved"; break; }
+      if [[ -z "$(am_active_names)" ]]; then mark "all alerts resolved"; break; fi
       printf '\r  %sstill active: %s%s' "$DIM" "$(am_active_names | tr '\n' ' ')" "$RST"
       sleep 5
     done
