@@ -180,7 +180,13 @@ cmd_inject() {
   printf '%sExpecting alert: %s%s\n' "$DIM" "${alert}" "$RST"
 
   step "Committing broken code to Git"
-  local sha; sha="$(apply_variant "${scen}" "fault(${scen}): inject demo fault via faultctl")"
+  local subject
+  case "${scen}" in
+    broken-commit) subject="feat: add pricing tier multipliers to /work" ;;
+    crashloop)     subject="refactor: extract pricing tiers into tier_config module" ;;
+    latency)       subject="fix: add backoff between upstream pricing lookups" ;;
+  esac
+  local sha; sha="$(apply_variant "${scen}" "${subject}")"
   mark "pushed ${sha:0:7} to origin"
 
   step "Forcing ArgoCD reconciliation"
@@ -225,7 +231,7 @@ cmd_heal() {
   START_TS=$(date +%s)
 
   step "Restoring healthy app.py"
-  local sha; sha="$(apply_variant healthy "fix: restore healthy demo-api via faultctl")"
+  local sha; sha="$(apply_variant healthy "revert: roll back pricing tier changes")"
   mark "pushed ${sha:0:7} to origin"
 
   step "Forcing ArgoCD reconciliation"
