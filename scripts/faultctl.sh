@@ -113,7 +113,8 @@ am_firing() {
 }
 am_active_names() {
   curl -sf "http://127.0.0.1:${LOCAL_AM_PORT}/api/v2/alerts?active=true" 2>/dev/null \
-    | tr ',' '\n' | grep '"alertname"' | cut -d'"' -f4 | sort -u
+    | grep -o '"alertname":"[^"]*"' | cut -d'"' -f4 \
+    | grep -Ev '^(Watchdog|InfoInhibitor)$' | sort -u
 }
 
 argocd_refresh() {
