@@ -23,6 +23,7 @@ ALERTMANAGER_NS="monitoring"
 ALERTMANAGER_SVC="kube-prometheus-stack-alertmanager"
 ALERTMANAGER_PORT="9093"
 LOCAL_AM_PORT="19093"
+AM_DIRECT_URL="http://192.168.40.54"   # MetalLB; empty string = always port-forward
 
 SYNC_TIMEOUT=120
 ROLLOUT_TIMEOUT=120
@@ -89,6 +90,18 @@ require_clean_tree() {
 }
 
 AM_PF_PID=""
+AM_BASE=""
+
+am_connect() {
+  if [[ -n "${AM_DIRECT_URL:-}" ]] \
+     && curl -sf --max-time 3 "${AM_DIRECT_URL:-}/-/ready" >/dev/null 2>&1; then
+    AM_BASE="${AM_DIRECT_URL}"
+    return 0
+  fi
+  am_port_forward || return 1
+  AM_BASE="http://127.0.0.1:${LOCAL_AM_PORT}"
+}
+
 am_port_forward() {
   kubectl -n "${ALERTMANAGER_NS}" port-forward \
     "svc/${ALERTMANAGER_SVC}" "${LOCAL_AM_PORT}:${ALERTMANAGER_PORT}" \
@@ -108,11 +121,11 @@ am_cleanup() {
 trap am_cleanup EXIT
 
 am_firing() {
-  curl -sf "http://127.0.0.1:${LOCAL_AM_PORT}/api/v2/alerts?active=true&silenced=false&inhibited=false" \
+  curl -sf "${AM_BASE}/api/v2/alerts?active=true&silenced=false&inhibited=false" \
     2>/dev/null | grep -q "\"alertname\":\"$1\""
 }
 am_active_names() {
-  curl -sf "http://127.0.0.1:${LOCAL_AM_PORT}/api/v2/alerts?active=true" 2>/dev/null \
+  curl -sf "${AM_BASE}/api/v2/alerts?active=true" 2>/dev/null \
     | grep -o '"alertname":"[^"]*"' | cut -d'"' -f4 \
     | grep -Ev '^(Watchdog|InfoInhibitor)$' | sort -u || true
 }
@@ -206,7 +219,7 @@ cmd_inject() {
   fi
 
   step "Watching Alertmanager for ${alert}"
-  if am_port_forward; then
+  if am_connect; then
     local deadline=$(( $(date +%s) + ALERT_TIMEOUT )) seen=0
     while (( $(date +%s) < deadline )); do
       if am_firing "${alert}"; then seen=1; break; fi
@@ -243,7 +256,7 @@ cmd_heal() {
     --timeout="${ROLLOUT_TIMEOUT}s" >/dev/null && mark "healthy pods running"
 
   step "Waiting for alerts to resolve"
-  if am_port_forward; then
+  if am_connect; then
     local deadline=$(( $(date +%s) + ALERT_TIMEOUT ))
     while (( $(date +%s) < deadline )); do
       if [[ -z "$(am_active_names)" ]]; then mark "all alerts resolved"; break; fi
@@ -267,7 +280,7 @@ cmd_status() {
   kubectl -n "${NAMESPACE}" get pods -o wide | sed 's/^/  /'
 
   printf '\n%sActive alerts%s\n' "$BOLD" "$RST"
-  if am_port_forward; then
+  if am_connect; then
     local names; names="$(am_active_names)"
     [[ -n "${names}" ]] && echo "${names}" | sed 's/^/  /' || printf '  (none)\n'
   fi
