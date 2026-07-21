@@ -1,7 +1,7 @@
 # Self-Hosted Kubernetes Platform with AI-Augmented Incident Response
 
 CSE 499 Senior Project · Austin Allen · BYU-Idaho · Spring 2026
-Stakeholder: Reggie Allen, Nutanix
+
 
 A three-node, high-availability Kubernetes platform running on owned bare metal,
 with a full metrics-and-logs observability stack and a custom **SRE copilot** —
