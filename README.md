@@ -1,7 +1,6 @@
 # Self-Hosted Kubernetes Platform with AI-Augmented Incident Response
 
-CSE 499 Senior Project · Austin Allen · BYU-Idaho · Spring 2026
-
+CSE 499 Senior Project · BYU-Idaho · Spring 2026
 
 A three-node, high-availability Kubernetes platform running on owned bare metal,
 with a full metrics-and-logs observability stack and a custom **SRE copilot** —
@@ -24,10 +23,9 @@ The novel contribution here is that layer, built on an open foundation.
         +--------------+-------+-------+--------------+
         |              |                              |
    k3s-node1       k3s-node2                     k3s-node3
-   .40.10          .40.11                        .40.12
         +--------------+--------------+---------------+
                                |
-              kube-vip floating VIP · 192.168.40.20
+                  kube-vip floating control-plane VIP
                                |
   +----------------------------+-----------------------------------+
   |  Platform    ArgoCD (GitOps) · MetalLB (L2) · Longhorn          |
@@ -48,8 +46,8 @@ The novel contribution here is that layer, built on an open foundation.
 | | |
 |---|---|
 | Nodes | 3x Lenovo ThinkCentre M720q (i5-8400T, 8GB DDR4, 256GB SSD) |
-| Addresses | 192.168.40.10-.12, control-plane VIP .20 |
-| LoadBalancer pool | 192.168.40.50-.99 (MetalLB) |
+| Addressing | Static addresses on a private VLAN; floating control-plane VIP |
+| LoadBalancer | MetalLB pool on the same private VLAN |
 | OS | Ubuntu Server 24.04 LTS |
 | Network | UniFi, dedicated Cluster VLAN with Zone-Based Firewall |
 
@@ -146,8 +144,8 @@ two independent sources rather than paraphrasing a traceback.
 rollout, and polls Alertmanager until the alert fires — printing a timeline:
 
 ```
-   1s  pushed 712b255 to origin
-  18s  ArgoCD reported Synced + Healthy at 712b255
+   1s  pushed a broken commit to origin
+  18s  ArgoCD reported Synced + Healthy at that revision
   18s  new pods running with faulty code
  121s  DemoApiHighErrorRate FIRING — webhook delivered to sre-copilot
 ```
@@ -165,11 +163,11 @@ diagnostic problem than a dead service.
 | VIP moves on node failure | `kube-system` lease `holderIdentity` changes |
 | Deploy from Git via ArgoCD | `bootstrap/root-app.yaml`, `apps/` |
 | Reconcile and report drift | out-of-band `kubectl scale` reverted; ArgoCD diff view |
-| MetalLB pool IPs | `kubectl get svc -A` shows LoadBalancer IPs |
+| MetalLB pool IPs | `kubectl get svc -A` shows LoadBalancer addresses |
 | Replicated Longhorn volumes | Longhorn UI, replicas across nodes |
 | Data intact after node loss | marker file written before kill, read after |
 | Prometheus metrics | `manifests/observability/servicemonitor-demo-api.yaml` |
-| Grafana dashboards | Grafana on MetalLB IP |
+| Grafana dashboards | Grafana on a MetalLB address |
 | Loki logs queryable | Alloy to Loki; Grafana Explore |
 | Alertmanager fires on faults | `manifests/observability/prometheusrule-demo-api.yaml` |
 | Alerts delivered by webhook | Alertmanager receiver to copilot Service |
@@ -210,10 +208,10 @@ project proposal specified; a local-model (Ollama) path was not attempted, as
 
 Single-operator platform, no public-internet exposure, no end-user accounts.
 Grafana, Prometheus and Alertmanager are exposed unauthenticated on an isolated
-VLAN — acceptable for this scope, not for production. The only data leaving the
-network is the copilot's request to the Anthropic API over TLS, which may include
-short metric and log excerpts. Prompt-size limits and a monthly spend cap bound
-both cost and egress volume.
+private VLAN — acceptable for this scope, not for production. The only data
+leaving the network is the copilot's request to the Anthropic API over TLS, which
+may include short metric and log excerpts. Prompt-size limits and a monthly spend
+cap bound both cost and egress volume.
 
 ## References
 
