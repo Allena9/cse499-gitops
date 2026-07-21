@@ -24,6 +24,10 @@ spec:
           enabled: false
 
         prometheus:
+          service:
+            type: LoadBalancer
+            annotations:
+              metallb.universe.tf/loadBalancerIPs: 192.168.40.55
           prometheusSpec:
             retention: 5d
             # Pick up ServiceMonitors/PrometheusRules created outside this Helm release.
@@ -46,6 +50,10 @@ spec:
                       storage: 10Gi
 
         alertmanager:
+          service:
+            type: LoadBalancer
+            annotations:
+              metallb.universe.tf/loadBalancerIPs: 192.168.40.54
           alertmanagerSpec:
             resources:
               requests:
